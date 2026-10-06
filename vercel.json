@@ -1,0 +1,27 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "taskflow": {
+      "root": "TaskFlow",
+      "framework": "vite"
+    },
+    "backend": {
+      "root": "TaskFlow/Backend",
+      "framework": "express"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "taskflow"
+      }
+    }
+  ]
+}
