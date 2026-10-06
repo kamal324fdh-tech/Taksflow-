@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsProject(projectId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/projects/$(projectId)).data.userId == request.auth.uid;
+    }
+
+    function ownsTask(taskId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/tasks/$(taskId)).data.userId == request.auth.uid;
+    }
+
+    match /projects/{projectId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /tasks/{taskId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.projectId is string
+        && ownsProject(request.resource.data.projectId);
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.projectId is string
+        && ownsProject(request.resource.data.projectId);
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+
+      match /activity/{activityId} {
+        allow read: if ownsTask(taskId);
+        allow create: if ownsTask(taskId)
+          && request.resource.data.keys().hasOnly(['action', 'timestamp'])
+          && request.resource.data.action is string
+          && request.resource.data.action.size() <= 200
+          && request.resource.data.timestamp == request.time;
+        allow delete: if ownsTask(taskId);
+      }
+    }
+  }
+}
